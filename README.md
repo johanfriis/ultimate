@@ -47,8 +47,8 @@ with the conversation, model and thinking controls, login, and footer, plus ever
 
 Needs Node 26 and pnpm, and a `pi` login (Ultimate shares `~/.pi/agent`: credentials, models, settings; personal skills and
 instructions go in `~/.ultimate/skills/` and `~/.ultimate/AGENTS.md`). The
-screenshot and browser tools need a Chromium: `/usr/bin/chromium`, Google Chrome, Playwright's cached Chromium, or
-`ULTIMATE_CHROMIUM=<path>`.
+screenshot and browser tools need a Chromium: `/usr/bin/chromium`, Google Chrome, a Chromium on `PATH`, Playwright's
+cached Chromium, or `ULTIMATE_CHROMIUM=<path>`.
 
 ```bash
 pnpm install

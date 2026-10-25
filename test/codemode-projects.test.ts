@@ -1,5 +1,6 @@
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
+import { hostname } from 'node:os'
 import { expect, it } from 'vitest'
 import type { Register } from '../lib/cloud.ts'
 import { actions } from '../extensions/codemode/server.ts'
@@ -188,10 +189,7 @@ it("answers another project's read of an exported document, and refuses an unkno
 it('reaches a satellite at the address the user set, since it never backs up to the register', async () => {
   const userHome = await temp()
   await writeJson(join(userHome, '.ultimate/settings.json'), {
-    cloud: {
-      machine: 'rog',
-      satellites: { mac: { Ultimate: 'https://mac.tail.ts.net:4747' } },
-    },
+    cloud: { satellites: { mac: { Ultimate: 'https://mac.tail.ts.net:4747' } } },
   })
   const host = {
     userHome,
@@ -205,7 +203,8 @@ it('reaches a satellite at the address the user set, since it never backs up to 
     name: 'Ultimate',
     machine: 'mac',
   })
-  expect(await locate(host, 'ultimate', 'rog')).toEqual({ current: true })
+  // With no cloud configured, this machine is named by its host name.
+  expect(await locate(host, 'ultimate', hostname())).toEqual({ current: true })
   await expect(locate(host, 'blog', 'mac')).rejects.toThrow('Unknown project blog on mac')
 })
 

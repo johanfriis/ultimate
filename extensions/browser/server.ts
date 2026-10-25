@@ -1,6 +1,7 @@
+import { constants } from 'node:fs'
 import { access, mkdir, readdir } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { delimiter, dirname, join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { Type } from '@earendil-works/pi-ai'
 import { formatDimensionNote, resizeImage } from '@earendil-works/pi-coding-agent'
@@ -8,12 +9,22 @@ import { defineExtension, defineTool, section } from '@earendil-works/pi-durable
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright-core'
 import type { ExtensionHost } from '../../server/extensions.ts'
 
+/** Chromium builds Playwright can launch, by the command name they install on PATH. */
+const browserCommands = [
+  'chromium',
+  'chromium-browser',
+  'google-chrome-stable',
+  'chrome-headless-shell',
+]
+
 export async function browserBinary() {
   const cache = join(homedir(), '.cache/ms-playwright')
+  const dirs = (process.env.PATH ?? '').split(delimiter).filter(Boolean)
   const candidates = [
     process.env.ULTIMATE_CHROMIUM,
     '/usr/bin/chromium',
     '/usr/bin/google-chrome-stable',
+    ...browserCommands.flatMap((command) => dirs.map((dir) => join(dir, command))),
     ...(await readdir(cache).catch(() => []))
       .filter((name) => name.startsWith('chromium-'))
       .toSorted()
@@ -22,14 +33,14 @@ export async function browserBinary() {
   ].filter((path): path is string => !!path)
   for (const path of candidates) {
     try {
-      await access(path)
+      await access(path, constants.X_OK)
       return path
     } catch {
       /* try the next installed browser */
     }
   }
   throw new Error(
-    'No Chromium found. Set ULTIMATE_CHROMIUM or install /usr/bin/chromium, /usr/bin/google-chrome-stable, or ~/.cache/ms-playwright/chromium-*/chrome-linux64/chrome.',
+    `No Chromium found. Set ULTIMATE_CHROMIUM, put one of ${browserCommands.join(', ')} on PATH, or install /usr/bin/chromium, /usr/bin/google-chrome-stable, or ~/.cache/ms-playwright/chromium-*/chrome-linux64/chrome.`,
   )
 }
 

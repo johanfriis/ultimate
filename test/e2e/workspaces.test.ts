@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
 import { once } from 'node:events'
 import { mkdir, readFile, realpath, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -94,15 +94,17 @@ it.each(['symlinked home mid-setup', 'branch creation before registration'])(
   `
     const bin = join(paths.directory, 'bin')
     await mkdir(bin)
+    // The real git, resolved from PATH before the wrapper's bin dir shadows it (not every system has /usr/bin/git).
+    const realGit = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim()
     await writeFile(
       join(bin, 'git'),
       `#!/bin/sh
 if [ "$1 $2" = "worktree add" ]; then
-  /usr/bin/git branch "$4" "$6" || exit 1
+  '${realGit}' branch "$4" "$6" || exit 1
   echo branch > '${started}'
   while [ ! -f '${gate}' ]; do sleep 0.05; done
 fi
-exec /usr/bin/git "$@"
+exec '${realGit}' "$@"
 `,
       { mode: 0o755 },
     )
