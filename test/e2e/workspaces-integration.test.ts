@@ -2939,7 +2939,8 @@ it.concurrent('release never removes a registered checkout whose .git file is br
   const workspace = (await f.service.get(id, context))!
   await writeFile(join(workspace.path, 'precious.txt'), 'keep me')
   await writeFile(join(workspace.path, '.git'), 'gitdir: /nowhere\n')
-  await expect(f.service.release([id], context)).rejects.toThrow('not a git repository')
+  // Git words the broken-gitfile error differently across versions; the status check refusing is what matters.
+  await expect(f.service.release([id], context)).rejects.toThrow('git status')
   expect(await readFile(join(workspace.path, 'precious.txt'), 'utf8')).toBe('keep me')
 })
 it.concurrent('release leaves a folder that a failed preparation found at the path', async () => {
