@@ -255,7 +255,7 @@ export async function runLanderCheck(
   try {
     let exitCode: number
     try {
-      exitCode = await runGroup('/bin/bash', ['-c', command], {
+      exitCode = await runGroup('bash', ['-c', command], {
         cwd: path,
         env: { ...process.env, TMPDIR: tmp },
         pidFile: join(pids, `${process.pid}-${randomUUID()}.pid`),
