@@ -1,7 +1,7 @@
 import { removeTemp } from './helpers.ts'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { afterAll, expect, it } from 'vitest'
+import { afterEach, expect, it } from 'vitest'
 import { fauxServer, sourceCopy, temp, until, attach } from './helpers.ts'
 import { context } from '../server/harness.ts'
 import { compareExtensions, discoverExtensions } from '../server/discovery.ts'
@@ -11,8 +11,8 @@ import { createRegistry, toolRenderers } from '../web/src/sdk/registry.ts'
 
 const homes: string[] = []
 const servers: Awaited<ReturnType<typeof fauxServer>>[] = []
-// Tests run concurrently, each on its own server; close them all once the file is done.
-afterAll(async () => {
+// Each test runs on its own server; close it when the test ends, so idle servers do not pile up for the rest of the file.
+afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => server.close()))
   for (const home of homes.splice(0)) await removeTemp(home)
 })
@@ -34,7 +34,7 @@ async function fixture(settings?: string) {
   servers.push(server)
   return { home, projectRoot, server }
 }
-it.concurrent('orders facets by source so a project bash tool and renderer win regardless of folder name', async () => {
+it('orders facets by source so a project bash tool and renderer win regardless of folder name', async () => {
   const home = await temp()
   homes.push(home)
   const projectRoot = join(home, 'project')
@@ -111,7 +111,7 @@ export default (host) => {
   host.onOpen(async () => {})
   return defineExtension({ name: 'service-test' })
 }`
-it.concurrent('keeps the provider on a failed reload, replaces it on reload and drops it on disable', async () => {
+it('keeps the provider on a failed reload, replaces it on reload and drops it on disable', async () => {
   const { home, projectRoot, server } = await fixture()
   const folder = join(projectRoot, '.ultimate/extensions/service-test')
   await mkdir(folder, { recursive: true })
@@ -157,7 +157,7 @@ it.concurrent('keeps the provider on a failed reload, replaces it on reload and 
   ).toBeNull()
 })
 
-it.concurrent('keeps the replacement provider available while the old cleanup is pending', async () => {
+it('keeps the replacement provider available while the old cleanup is pending', async () => {
   const { projectRoot, server } = await fixture()
   const folder = join(projectRoot, '.ultimate/extensions/service-test')
   await mkdir(folder, { recursive: true })
@@ -200,7 +200,7 @@ const tools = async (server: Awaited<ReturnType<typeof fauxServer>>) =>
 const web = async (server: Awaited<ReturnType<typeof fauxServer>>) =>
   Object.keys((await server.vite.ssrLoadModule('virtual:ultimate/web-facets')).loaders)
 
-it.concurrent('layers settings live, installs and uninstalls tools and web facets, and notices unknown names once', async () => {
+it('layers settings live, installs and uninstalls tools and web facets, and notices unknown names once', async () => {
   const { home, projectRoot, server } = await fixture()
   const config = join(projectRoot, '.ultimate')
   const settings = join(config, 'settings.json')
@@ -279,7 +279,7 @@ it.concurrent('layers settings live, installs and uninstalls tools and web facet
   }
 })
 
-it.concurrent('retains valid enablement through invalid edits and delivers startup diagnostics to later clients', async () => {
+it('retains valid enablement through invalid edits and delivers startup diagnostics to later clients', async () => {
   const valid = { extensions: { enable: ['unknown-startup'], disable: ['automations'] } }
   const { home, server } = await fixture(JSON.stringify(valid))
   const settings = join(home, '.ultimate/settings.json')
@@ -337,7 +337,7 @@ it.concurrent('retains valid enablement through invalid edits and delivers start
   }
 })
 
-it.concurrent('keeps a core-tier extension enabled over extensions.disable, with a diagnostic', async () => {
+it('keeps a core-tier extension enabled over extensions.disable, with a diagnostic', async () => {
   const { home, server } = await fixture(
     JSON.stringify({ extensions: { disable: ['subagents', 'automations'] } }),
   )
@@ -357,7 +357,7 @@ it.concurrent('keeps a core-tier extension enabled over extensions.disable, with
   })
 })
 
-it.concurrent('enables every built-in by default except the default-off ones', async () => {
+it('enables every built-in by default except the default-off ones', async () => {
   const home = await temp()
   homes.push(home)
   const root = await sourceCopy(home)
@@ -384,7 +384,7 @@ it.concurrent('enables every built-in by default except the default-off ones', a
   ).toEqual([...defaultOff].toSorted())
 })
 
-it.concurrent('turns a default-off built-in on from user or project settings', async () => {
+it('turns a default-off built-in on from user or project settings', async () => {
   const home = await temp()
   homes.push(home)
   const projectRoot = join(home, 'project')
@@ -408,7 +408,7 @@ it.concurrent('turns a default-off built-in on from user or project settings', a
   expect(discovered.settings.layers.get('health')).toBe('project')
 })
 
-it.concurrent('turns the updater on by default, and keeps it off for a user who disabled it', async () => {
+it('turns the updater on by default, and keeps it off for a user who disabled it', async () => {
   const home = await temp()
   homes.push(home)
   const projectRoot = join(home, 'project')

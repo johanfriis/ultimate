@@ -6,7 +6,7 @@ import type { FauxResponseFactory } from '@earendil-works/pi-ai/providers/faux'
 import { estimateMessageTokens } from '@earendil-works/pi-ai/utils/estimate'
 import { defineTask, ROOT_CONVERSATION_ID } from '@earendil-works/pi-durable'
 import type { ConversationId } from '@earendil-works/pi-durable'
-import { afterAll, beforeAll, expect } from 'vitest'
+import { afterEach, beforeAll, expect } from 'vitest'
 import { context } from '../server/harness.ts'
 import { fauxServer, post, seedTally, sourceCopy, temp } from './helpers.ts'
 
@@ -26,7 +26,7 @@ beforeAll(async () => {
 export type Server = Awaited<ReturnType<typeof fauxServer>>
 export const servers: Server[] = []
 // Each test owns its durable home; share only the read-only source fixture.
-afterAll(async () => {
+afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => server.close()))
 })
 

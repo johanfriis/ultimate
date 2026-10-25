@@ -1,7 +1,8 @@
 import { existsSync } from 'node:fs'
 import { cp, mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { setImmediate as yieldIO } from 'node:timers/promises'
+// fast-test-reason: until's poll interval; spinning on setImmediate starves the in-process server a test waits on.
+import { setImmediate as yieldIO, setTimeout as sleep } from 'node:timers/promises'
 import { join, resolve, sep } from 'node:path'
 import { applyImmutable } from '@earendil-works/chord/delta'
 import type { Op } from '@earendil-works/chord/delta'
@@ -231,7 +232,9 @@ export async function until(
   while (!(await test())) {
     if (performance.now() > deadline) throw new Error('Timed out')
     await tick?.()
-    await yieldIO()
+    // A short pause instead of an immediate re-check: under CPU contention a spinning check (often an HTTP request to
+    // the server in this process) takes the event loop from the work it waits for.
+    await sleep(5)
   }
 }
 export async function post(server: string | { url: string }, path: string, data: unknown = {}) {

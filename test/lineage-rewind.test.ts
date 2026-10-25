@@ -5,7 +5,7 @@ import { fauxAssistantMessage, fauxToolCall } from '@earendil-works/pi-ai/provid
 import type { FauxResponseFactory } from '@earendil-works/pi-ai/providers/faux'
 import { LiveDoc, ROOT_CONVERSATION_ID } from '@earendil-works/pi-durable'
 import type { CompactionResult, EntryRecord, TaskId } from '@earendil-works/pi-durable'
-import { afterAll, beforeAll, expect, it } from 'vitest'
+import { afterEach, beforeAll, expect, it } from 'vitest'
 import { MessageSent } from '../extensions/messages/api.ts'
 import { Rewound } from '../extensions/lineage/refs.ts'
 import { Standing, Started } from '../extensions/subagents/api.ts'
@@ -24,7 +24,7 @@ beforeAll(async () => {
 })
 type Server = Awaited<ReturnType<typeof fauxServer>>
 const servers: Server[] = []
-afterAll(async () => {
+afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => server.close()))
 })
 

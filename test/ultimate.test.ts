@@ -1,6 +1,6 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { afterAll, expect, it } from 'vitest'
+import { afterEach, expect, it } from 'vitest'
 import {
   fauxAssistantMessage,
   fauxProvider,
@@ -21,8 +21,8 @@ import { fauxServer, seedTally, sourceCopy, temp, removeTemp, until, post } from
 type Server = Awaited<ReturnType<typeof fauxServer>>
 const servers: Server[] = []
 const homes: string[] = []
-// Tests run concurrently, each on its own server; close them all once the file is done.
-afterAll(async () => {
+// Each test runs on its own server; close it when the test ends, so idle servers do not pile up for the rest of the file.
+afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => server.close()))
   for (const home of homes.splice(0)) await removeTemp(home)
 })
@@ -110,7 +110,7 @@ async function ask(server: Server, id: ConversationId, text: string) {
   await (await conversation.submit({ type: 'input', content: text }, context)).wait(context)
 }
 
-it.concurrent('ships a resident Ultimate definition with valid tools; standing addresses create recipients and name both sides', async () => {
+it('ships a resident Ultimate definition with valid tools; standing addresses create recipients and name both sides', async () => {
   const f = await fixture()
   const definition = parseDefinition(
     await readFile(resolve('agents/ultimate.md'), 'utf8'),
@@ -147,7 +147,7 @@ it.concurrent('ships a resident Ultimate definition with valid tools; standing a
   ).not.toContain('branch')
 })
 
-it.concurrent('starts a lineage branch with a message input and caller attribution, returns its answer, and selects roots', async () => {
+it('starts a lineage branch with a message input and caller attribution, returns its answer, and selects roots', async () => {
   const f = await fixture()
   await seedTally(f.server.harness)
   const ultimate = await f.subagents.standing('ultimate', context)
@@ -287,7 +287,7 @@ it.concurrent('starts a lineage branch with a message input and caller attributi
   )
 })
 
-it.concurrent('refreshes standing definitions for numeric-address deliveries', async () => {
+it('refreshes standing definitions for numeric-address deliveries', async () => {
   const f = await fixture()
   const dice = await f.subagents.standing('dice', context)
   await writeFile(
@@ -308,7 +308,7 @@ it.concurrent('refreshes standing definitions for numeric-address deliveries', a
   await f.server.harness.waitForIdle(context)
 })
 
-it.concurrent('refreshes standing definitions before delivering automatic replies', async () => {
+it('refreshes standing definitions before delivering automatic replies', async () => {
   const f = await fixture(async (text, home) => {
     if (text.startsWith('Message from') && text.includes('\nRoll after edit\n'))
       await writeFile(
@@ -326,7 +326,7 @@ it.concurrent('refreshes standing definitions before delivering automatic replie
   await f.server.harness.waitForIdle(context)
 })
 
-it.concurrent('keeps Ultimate answers to messages replies out of the log, including after reopen', async () => {
+it('keeps Ultimate answers to messages replies out of the log, including after reopen', async () => {
   const f = await fixture()
   const ultimate = await f.subagents.standing('ultimate', context)
   const resident = (await f.server.harness.conversation(ultimate, context))!
@@ -356,7 +356,7 @@ it.concurrent('keeps Ultimate answers to messages replies out of the log, includ
   expect(await log(reopened)).toEqual(before)
 })
 
-it.concurrent('notes an @ultimate overlay as changed instructions and applies its additions', async () => {
+it('notes an @ultimate overlay as changed instructions and applies its additions', async () => {
   const f = await fixture()
   const ultimate = await f.subagents.standing('ultimate', context)
   await ask(f.server, ultimate, 'first')
@@ -389,7 +389,7 @@ async function agentInstructions(f: Awaited<ReturnType<typeof fixture>>, id: Con
   return (await (await f.server.harness.conversation(id, context))!.agent(context)).instructions
 }
 
-it.concurrent('re-applies an updated @ultimate definition on a typed input and notes changed instructions once', async () => {
+it('re-applies an updated @ultimate definition on a typed input and notes changed instructions once', async () => {
   const f = await fixture()
   const ultimate = await f.subagents.standing('ultimate', context)
   const notes = async () =>
