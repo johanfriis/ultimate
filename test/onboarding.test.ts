@@ -9,7 +9,7 @@ import { git } from '../lib/git.ts'
 import { projectDecision } from '../server/project-setup.ts'
 import { ProjectTrustStore } from '@earendil-works/pi-coding-agent'
 
-it('gates project resources, remembers choices, and applies onboarding settings actions live', async () => {
+async function fixture() {
   const home = await temp('ultimate-onboarding-')
   const project = join(home, 'project')
   const config = join(project, '.ultimate')
@@ -52,19 +52,40 @@ it('gates project resources, remembers choices, and applies onboarding settings 
     localSetup: false,
     firstRun: true,
   }
-  let server: Awaited<ReturnType<typeof fauxServer>> | undefined
+  let server = await fauxServer(options)
+  const action = async (name: string, args: unknown = {}) => {
+    const response = await post(server, `/api/extensions/onboarding/actions/${name}`, { args })
+    expect(response.status).toBe(200)
+    return response.data.result
+  }
+  return {
+    server,
+    project,
+    userFile,
+    projectFile,
+    action,
+    enabled: (name: string) =>
+      server.extensions.info().find((entry) => entry.name === name)?.enabled,
+    web: async () =>
+      Object.keys((await server.vite.ssrLoadModule('virtual:ultimate/web-facets')).loaders),
+    tools: async () => (await server.root.agent(context)).tools.map((tool) => tool.name),
+    restart: async () => {
+      await server.close()
+      server = await fauxServer({ ...options, ultimateRoot: server.host.ultimateRoot })
+      return server
+    },
+    close: async () => {
+      await server.close()
+      await removeTemp(home)
+    },
+  }
+}
+
+it('gates project resources and persists project extension choices', async () => {
+  const f = await fixture()
+  const { project, projectFile, action, enabled, web, tools } = f
+  let { server } = f
   try {
-    server = await fauxServer(options)
-    const action = async (name: string, args: unknown = {}) => {
-      const response = await post(server!, `/api/extensions/onboarding/actions/${name}`, { args })
-      expect(response.status).toBe(200)
-      return response.data.result
-    }
-    const enabled = (name: string) =>
-      server!.extensions.info().find((entry) => entry.name === name)?.enabled
-    const web = async () =>
-      Object.keys((await server!.vite.ssrLoadModule('virtual:ultimate/web-facets')).loaders)
-    const tools = async () => (await server!.root.agent(context)).tools.map((tool) => tool.name)
     for (const args of [
       {},
       { extensions: { plan: 'yes' } },
@@ -128,9 +149,8 @@ it('gates project resources, remembers choices, and applies onboarding settings 
     expect(await tools()).not.toContain('automation')
     expect((await web()).some((path) => path.endsWith('/x/web.tsx'))).toBe(true)
     expect(server.system.current().skills.some((skill) => skill.name === 'local-skill')).toBe(true)
-    expect(projectDecision(project, home)).toBe(true)
-    await server.close()
-    server = await fauxServer(options)
+    expect(projectDecision(project, server.host.userHome)).toBe(true)
+    server = await f.restart()
     expect(server.system.current().project.decision).toBe(true)
     expect(enabled('x')).toBe(true)
     await action('setExtension', { name: 'splash', enabled: false, scope: 'project' })
@@ -145,6 +165,24 @@ it('gates project resources, remembers choices, and applies onboarding settings 
       defaultSurface: 'workbench',
       extensions: { extra: 'keep', enable: ['splash'], disable: ['automations'] },
     })
+    await action('decide', { local: false })
+    expect(enabled('x')).toBe(false)
+    expect(enabled('automations')).toBe(true)
+    expect(await tools()).toContain('automation')
+    expect((await web()).some((path) => path.endsWith('/x/web.tsx'))).toBe(false)
+    expect(server.system.current().skills.some((skill) => skill.name === 'local-skill')).toBe(false)
+  } finally {
+    await f.close()
+  }
+})
+
+it('applies user settings live and adopts project choices without enabling local setup', async () => {
+  const f = await fixture()
+  const { userFile, action, enabled, web } = f
+  let { server } = f
+  try {
+    await action('decide', { local: true })
+    await action('setExtension', { name: 'splash', enabled: true, scope: 'project' })
     await Promise.all(
       ['info', 'documents'].map((name) =>
         action('setExtension', { name, enabled: true, scope: 'user' }),
@@ -179,11 +217,6 @@ it('gates project resources, remembers choices, and applies onboarding settings 
       (await action('extensions')).find((entry: { name: string }) => entry.name === 'sounds').layer,
     ).toBe('user')
     await action('decide', { local: false })
-    expect(enabled('x')).toBe(false)
-    expect(enabled('automations')).toBe(true)
-    expect(await tools()).toContain('automation')
-    expect((await web()).some((path) => path.endsWith('/x/web.tsx'))).toBe(false)
-    expect(server.system.current().skills.some((skill) => skill.name === 'local-skill')).toBe(false)
     const adoptDenied = await post(server, '/api/extensions/onboarding/actions/adoptProjectSetup', {
       args: {},
     })
@@ -198,14 +231,12 @@ it('gates project resources, remembers choices, and applies onboarding settings 
     })
     await action('firstRunDone')
     expect((await action('status')).firstRun).toBe(false)
-    await server.close()
-    server = await fauxServer(options)
+    server = await f.restart()
     expect(server.system.current().project.decision).toBe(false)
     expect(enabled('x')).toBe(false)
     expect((await action('status')).firstRun).toBe(false)
   } finally {
-    await server?.close()
-    await removeTemp(home)
+    await f.close()
   }
 })
 
