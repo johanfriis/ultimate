@@ -1,6 +1,6 @@
 {
   "instance": {
-    "model": "openai-codex/gpt-6.1-sol"
+    "model": "github-copilot/gpt-6.1-sol"
   },
   "isolates": {
     "worktree": {
@@ -15,6 +15,6 @@
         { "command": "pnpm test:e2e", "timeout": 180 }
       ]
     ],
-    "push": "origin"
+    "push": "fork"
   }
 }
