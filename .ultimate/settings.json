@@ -1,4 +1,7 @@
 {
+  "extensions": {
+    "enable": ["voice-live"]
+  },
   "instance": {
     "model": "github-copilot/gpt-6.1-sol"
   },
